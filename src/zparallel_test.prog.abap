@@ -1,8 +1,7 @@
 REPORT zparallel_test.
 
-PARAMETERS: parallel TYPE c RADIOBUTTON GROUP g1 DEFAULT 'X',
-            max      TYPE i DEFAULT 4 OBLIGATORY,
-            sequenti TYPE c RADIOBUTTON GROUP g1.
+PARAMETERS: max  TYPE i DEFAULT 4 OBLIGATORY,
+            iter TYPE i DEFAULT 2 OBLIGATORY.
 
 * quick and dirty
 
@@ -45,16 +44,24 @@ CLASS lcl_test IMPLEMENTATION.
   METHOD run.
 
     DATA(lt_tadir) = find_tadir( ).
-    WRITE: / 'TADIR,', lines( lt_tadir ).
+    WRITE: / 'TADIR objects:', lines( lt_tadir ), /.
 
-    CASE abap_true.
-      WHEN parallel.
-        parallel( lt_tadir ).
-      WHEN sequenti.
-        sequential( lt_tadir ).
-      WHEN OTHERS.
-        ASSERT 0 = 1.
-    ENDCASE.
+    DO iter TIMES.
+      GET RUN TIME FIELD DATA(t1).
+      CLEAR gt_files.
+      parallel( lt_tadir ).
+      GET RUN TIME FIELD DATA(t2).
+      t1 = ( t2 - t1 ) / 1000000.
+      WRITE: / 'Parallel:', t1, 'seconds'.
+
+      GET RUN TIME FIELD t1.
+      sequential( lt_tadir ).
+      GET RUN TIME FIELD t2.
+      t1 = ( t2 - t1 ) / 1000000.
+      WRITE: / 'Sequential:', t1, 'seconds'.
+
+      WRITE: /.
+    ENDDO.
 
   ENDMETHOD.
 
@@ -104,6 +111,8 @@ CLASS lcl_test IMPLEMENTATION.
       WAIT UNTIL free > 0.
 
     ENDLOOP.
+
+    WAIT UNTIL free = max.
 
     WRITE: / 'file rows:', lines( gt_files ).
 
