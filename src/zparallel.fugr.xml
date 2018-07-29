@@ -1,0 +1,75 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<abapGit version="v1.0.0" serializer="LCL_OBJECT_FUGR" serializer_version="v1.0.0">
+ <asx:abap xmlns:asx="http://www.sap.com/abapxml" version="1.0">
+  <asx:values>
+   <AREAT>Parallel</AREAT>
+   <INCLUDES>
+    <SOBJ_NAME>LZPARALLELTOP</SOBJ_NAME>
+    <SOBJ_NAME>SAPLZPARALLEL</SOBJ_NAME>
+   </INCLUDES>
+   <FUNCTIONS>
+    <item>
+     <FUNCNAME>ZPARALLEL</FUNCNAME>
+     <REMOTE_CALL>R</REMOTE_CALL>
+     <SHORT_TEXT>test</SHORT_TEXT>
+     <IMPORT>
+      <RSIMP>
+       <PARAMETER>OBJ_TYPE</PARAMETER>
+       <TYP>TADIR-OBJECT</TYP>
+      </RSIMP>
+      <RSIMP>
+       <PARAMETER>OBJ_NAME</PARAMETER>
+       <TYP>TADIR-OBJ_NAME</TYP>
+      </RSIMP>
+      <RSIMP>
+       <PARAMETER>DEVCLASS</PARAMETER>
+       <TYP>TADIR-DEVCLASS</TYP>
+      </RSIMP>
+     </IMPORT>
+     <TABLES>
+      <RSTBL>
+       <PARAMETER>FILES</PARAMETER>
+       <TYP>CFT_RAWLINE</TYP>
+      </RSTBL>
+     </TABLES>
+     <EXCEPTION>
+      <RSEXC>
+       <EXCEPTION>ERROR</EXCEPTION>
+      </RSEXC>
+     </EXCEPTION>
+     <DOCUMENTATION>
+      <RSFDO>
+       <PARAMETER>OBJ_TYPE</PARAMETER>
+       <KIND>P</KIND>
+       <STEXT>Object Type</STEXT>
+       <INDEX> 001</INDEX>
+      </RSFDO>
+      <RSFDO>
+       <PARAMETER>OBJ_NAME</PARAMETER>
+       <KIND>P</KIND>
+       <STEXT>Object Name in Object Directory</STEXT>
+       <INDEX> 002</INDEX>
+      </RSFDO>
+      <RSFDO>
+       <PARAMETER>DEVCLASS</PARAMETER>
+       <KIND>P</KIND>
+       <STEXT>Package</STEXT>
+       <INDEX> 003</INDEX>
+      </RSFDO>
+      <RSFDO>
+       <PARAMETER>FILES</PARAMETER>
+       <KIND>P</KIND>
+       <STEXT>Table of the Type RAW with the Length 512</STEXT>
+       <INDEX> 004</INDEX>
+      </RSFDO>
+      <RSFDO>
+       <PARAMETER>ERROR</PARAMETER>
+       <KIND>X</KIND>
+       <INDEX> 005</INDEX>
+      </RSFDO>
+     </DOCUMENTATION>
+    </item>
+   </FUNCTIONS>
+  </asx:values>
+ </asx:abap>
+</abapGit>
