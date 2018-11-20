@@ -5,13 +5,9 @@ PARAMETERS: iter TYPE i DEFAULT 1 OBLIGATORY.
 START-OF-SELECTION.
   PERFORM run.
 
-CLASS lcl_test DEFINITION.
+CLASS lcl_test DEFINITION FINAL.
 
   PUBLIC SECTION.
-    CLASS-DATA:
-      free     TYPE i,
-      gt_files TYPE cft_rawline.
-
     CLASS-METHODS:
       run
         RAISING
@@ -33,7 +29,6 @@ CLASS lcl_test IMPLEMENTATION.
 
     DO iter TIMES.
       GET RUN TIME FIELD DATA(t1).
-      CLEAR gt_files.
       DATA(par) = NEW zcl_abapgit_serialize( )->serialize(
         it_tadir = lt_tadir
         iv_force_sequential = abap_false ).
@@ -42,14 +37,14 @@ CLASS lcl_test IMPLEMENTATION.
       WRITE: / 'Parallel:', t1, 'seconds'.
       WRITE: / lines( par ).
 
-*      GET RUN TIME FIELD t1.
-*      DATA(seq) = NEW zcl_abapgit_serialize( )->serialize(
-*        it_tadir = lt_tadir
-*        iv_force_sequential = abap_true ).
-*      GET RUN TIME FIELD t2.
-*      t1 = ( t2 - t1 ) / 1000000.
-*      WRITE: / 'Sequential:', t1, 'seconds'.
-*      WRITE: / lines( seq ).
+      GET RUN TIME FIELD t1.
+      DATA(seq) = NEW zcl_abapgit_serialize( )->serialize(
+        it_tadir = lt_tadir
+        iv_force_sequential = abap_true ).
+      GET RUN TIME FIELD t2.
+      t1 = ( t2 - t1 ) / 1000000.
+      WRITE: / 'Sequential:', t1, 'seconds'.
+      WRITE: / lines( seq ).
 
       WRITE: /.
     ENDDO.

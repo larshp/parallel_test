@@ -137,7 +137,8 @@ CLASS ZCL_ABAPGIT_SERIALIZE IMPLEMENTATION.
 * todo, error handling
     ENDIF.
 
-    IMPORT data = ls_fils_item FROM DATA BUFFER lv_result.
+    IMPORT data = ls_fils_item FROM DATA BUFFER lv_result. "#EC CI_SUBRC
+    ASSERT sy-subrc = 0.
 
     add_to_return( is_fils_item = ls_fils_item
                    iv_path      = lv_path ).
@@ -155,7 +156,6 @@ CLASS ZCL_ABAPGIT_SERIALIZE IMPLEMENTATION.
 
     ASSERT mv_free > 0.
 
-* todo, how to handle setting "<ls_file>-path = <ls_tadir>-path." ?
     DO.
       CALL FUNCTION 'Z_ABAPGIT_SERIALIZE_PARALLEL'
         STARTING NEW TASK iv_task
@@ -173,7 +173,7 @@ CLASS ZCL_ABAPGIT_SERIALIZE IMPLEMENTATION.
           resource_failure      = 3
           OTHERS                = 4.
       IF sy-subrc = 3.
-        WRITE: / 'resource failure, wait', iv_task, lv_msg.
+*        WRITE: / 'resource failure, wait', iv_task, lv_msg.
         lv_free = mv_free.
         WAIT UNTIL mv_free <> lv_free UP TO 1 SECONDS.
         CONTINUE.
@@ -211,10 +211,9 @@ CLASS ZCL_ABAPGIT_SERIALIZE IMPLEMENTATION.
 
   METHOD serialize.
 
-    DATA: lv_max       TYPE i,
-          ls_fils_item TYPE zcl_abapgit_objects=>ty_serialization.
+    DATA: lv_max TYPE i.
 
-    FIELD-SYMBOLS: <ls_tadir>  LIKE LINE OF it_tadir.
+    FIELD-SYMBOLS: <ls_tadir> LIKE LINE OF it_tadir.
 
 
 * todo, handle "unsupported object type" in log, https://github.com/larshp/abapGit/issues/2121
@@ -223,7 +222,6 @@ CLASS ZCL_ABAPGIT_SERIALIZE IMPLEMENTATION.
     CLEAR mt_files.
 
     lv_max = determine_max_threads( iv_force_sequential ).
-    WRITE: / 'max', lv_max.
     mv_free = lv_max.
 
     LOOP AT it_tadir ASSIGNING <ls_tadir>.
