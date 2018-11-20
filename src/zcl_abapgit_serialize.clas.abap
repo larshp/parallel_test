@@ -149,7 +149,8 @@ CLASS ZCL_ABAPGIT_SERIALIZE IMPLEMENTATION.
 
   METHOD run_parallel.
 
-    DATA: lv_msg TYPE c LENGTH 100.
+    DATA: lv_msg  TYPE c LENGTH 100,
+          lv_free LIKE mv_free.
 
 
     ASSERT mv_free > 0.
@@ -173,7 +174,8 @@ CLASS ZCL_ABAPGIT_SERIALIZE IMPLEMENTATION.
           OTHERS                = 4.
       IF sy-subrc = 3.
         WRITE: / 'resource failure, wait', iv_task, lv_msg.
-        WAIT UP TO 1 SECONDS.
+        lv_free = mv_free.
+        WAIT UNTIL mv_free <> lv_free UP TO 1 SECONDS.
         CONTINUE.
       ELSEIF sy-subrc <> 0.
         WRITE: / 'error, calling', sy-subrc, lv_msg.
