@@ -109,6 +109,10 @@ CLASS ZCL_ABAPGIT_SERIALIZE IMPLEMENTATION.
       zcx_abapgit_exception=>raise( |Error from SPBT_INITIALIZE: { sy-subrc }| ).
     ENDIF.
 
+    IF rv_threads > 1.
+      rv_threads = rv_threads - 1.
+    ENDIF.
+
     ASSERT rv_threads >= 1.
 
   ENDMETHOD.
@@ -151,27 +155,32 @@ CLASS ZCL_ABAPGIT_SERIALIZE IMPLEMENTATION.
     ASSERT mv_free > 0.
 
 * todo, how to handle setting "<ls_file>-path = <ls_tadir>-path." ?
-    CALL FUNCTION 'Z_ABAPGIT_SERIALIZE_PARALLEL'
-      STARTING NEW TASK iv_task
-      DESTINATION IN GROUP iv_group
-      CALLING on_end_of_task ON END OF TASK
-      EXPORTING
-        iv_obj_type           = is_tadir-object
-        iv_obj_name           = is_tadir-obj_name
-        iv_devclass           = is_tadir-devclass
-        iv_language           = iv_language
-        iv_path               = is_tadir-path
-      EXCEPTIONS
-        system_failure        = 1 MESSAGE lv_msg
-        communication_failure = 2 MESSAGE lv_msg
-        resource_failure      = 3.
-    IF sy-subrc = 3.
-      WRITE: / 'resource failure, wait'.
-      WAIT UP TO 1 SECONDS.
-    ELSEIF sy-subrc <> 0.
-      WRITE: / 'error, calling', sy-subrc, lv_msg.
-      RETURN.
-    ENDIF.
+    DO.
+      CALL FUNCTION 'Z_ABAPGIT_SERIALIZE_PARALLEL'
+        STARTING NEW TASK iv_task
+        DESTINATION IN GROUP iv_group
+        CALLING on_end_of_task ON END OF TASK
+        EXPORTING
+          iv_obj_type           = is_tadir-object
+          iv_obj_name           = is_tadir-obj_name
+          iv_devclass           = is_tadir-devclass
+          iv_language           = iv_language
+          iv_path               = is_tadir-path
+        EXCEPTIONS
+          system_failure        = 1 MESSAGE lv_msg
+          communication_failure = 2 MESSAGE lv_msg
+          resource_failure      = 3
+          OTHERS                = 4.
+      IF sy-subrc = 3.
+        WRITE: / 'resource failure, wait', iv_task, lv_msg.
+        WAIT UP TO 1 SECONDS.
+        CONTINUE.
+      ELSEIF sy-subrc <> 0.
+        WRITE: / 'error, calling', sy-subrc, lv_msg.
+* todo, error handling
+      ENDIF.
+      EXIT.
+    ENDDO.
 
     mv_free = mv_free - 1.
 
