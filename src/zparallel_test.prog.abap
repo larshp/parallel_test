@@ -136,7 +136,7 @@ CLASS lcl_test IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD find_tadir.
-    DATA(lt_repos) = NEW zcl_abapgit_persistence_repo( )->list( ).
+    DATA(lt_repos) = zcl_abapgit_persist_factory=>get_repo( )->list( ).
 
     LOOP AT lt_repos INTO DATA(ls_repo).
       DATA(lo_repo) = zcl_abapgit_repo_srv=>get_instance( )->get( ls_repo-key ).
