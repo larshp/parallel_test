@@ -1,53 +1,73 @@
-class ZCL_ABAPGIT_SERIALIZE definition
-  public
-  create public .
+CLASS zcl_abapgit_serialize DEFINITION
+  PUBLIC
+  CREATE PUBLIC .
 
-public section.
+  PUBLIC SECTION.
 
-  methods ON_END_OF_TASK
-    importing
-      !P_TASK type CLIKE .
-  methods SERIALIZE
-    importing
-      !IT_TADIR type ZIF_ABAPGIT_DEFINITIONS=>TY_TADIR_TT
-      !IV_LANGUAGE type LANGU default SY-LANGU
-      !IO_LOG type ref to ZCL_ABAPGIT_LOG optional
-      !IV_FORCE_SEQUENTIAL type ABAP_BOOL default ABAP_FALSE
-    returning
-      value(RT_FILES) type ZIF_ABAPGIT_DEFINITIONS=>TY_FILES_ITEM_TT
-    raising
-      ZCX_ABAPGIT_EXCEPTION .
-protected section.
+    METHODS on_end_of_task
+      IMPORTING
+        !p_task TYPE clike .
+    METHODS serialize
+      IMPORTING
+        !it_tadir            TYPE zif_abapgit_definitions=>ty_tadir_tt
+        !iv_language         TYPE langu DEFAULT sy-langu
+        !io_log              TYPE REF TO zcl_abapgit_log OPTIONAL
+        !iv_force_sequential TYPE abap_bool DEFAULT abap_false
+      RETURNING
+        VALUE(rt_files)      TYPE zif_abapgit_definitions=>ty_files_item_tt
+      RAISING
+        zcx_abapgit_exception .
+  PROTECTED SECTION.
 
-  data MT_FILES type ZIF_ABAPGIT_DEFINITIONS=>TY_FILES_ITEM_TT .
-  data MV_FREE type I .
+    DATA mt_files TYPE zif_abapgit_definitions=>ty_files_item_tt .
+    DATA mv_free TYPE i .
 
-  methods RUN_PARALLEL
-    importing
-      !IS_TADIR type ZIF_ABAPGIT_DEFINITIONS=>TY_TADIR
-      !IV_LANGUAGE type LANGU
-    raising
-      ZCX_ABAPGIT_EXCEPTION .
-  methods RUN_SEQUENTIAL
-    importing
-      !IS_TADIR type ZIF_ABAPGIT_DEFINITIONS=>TY_TADIR
-      !IV_LANGUAGE type LANGU
-      !IO_LOG type ref to ZCL_ABAPGIT_LOG
-    raising
-      ZCX_ABAPGIT_EXCEPTION .
-  methods DETERMINE_MAX_THREADS
-    importing
-      !IV_FORCE_SEQUENTIAL type ABAP_BOOL default ABAP_FALSE
-    returning
-      value(RV_THREADS) type I
-    raising
-      ZCX_ABAPGIT_EXCEPTION .
-private section.
+    METHODS add_to_return
+      IMPORTING
+        !iv_path      TYPE string
+        !is_fils_item TYPE zcl_abapgit_objects=>ty_serialization .
+    METHODS run_parallel
+      IMPORTING
+        !is_tadir    TYPE zif_abapgit_definitions=>ty_tadir
+        !iv_language TYPE langu
+      RAISING
+        zcx_abapgit_exception .
+    METHODS run_sequential
+      IMPORTING
+        !is_tadir    TYPE zif_abapgit_definitions=>ty_tadir
+        !iv_language TYPE langu
+        !io_log      TYPE REF TO zcl_abapgit_log
+      RAISING
+        zcx_abapgit_exception .
+    METHODS determine_max_threads
+      IMPORTING
+        !iv_force_sequential TYPE abap_bool DEFAULT abap_false
+      RETURNING
+        VALUE(rv_threads)    TYPE i
+      RAISING
+        zcx_abapgit_exception .
+  PRIVATE SECTION.
 ENDCLASS.
 
 
 
 CLASS ZCL_ABAPGIT_SERIALIZE IMPLEMENTATION.
+
+
+  METHOD add_to_return.
+
+    FIELD-SYMBOLS: <ls_file>   LIKE LINE OF is_fils_item-files,
+                   <ls_return> LIKE LINE OF mt_files.
+
+
+    LOOP AT is_fils_item-files ASSIGNING <ls_file>.
+      APPEND INITIAL LINE TO mt_files ASSIGNING <ls_return>.
+      <ls_return>-file = <ls_file>.
+      <ls_return>-file-path = iv_path.
+      <ls_return>-item = is_fils_item-item.
+    ENDLOOP.
+
+  ENDMETHOD.
 
 
   METHOD determine_max_threads.
@@ -94,17 +114,24 @@ CLASS ZCL_ABAPGIT_SERIALIZE IMPLEMENTATION.
 
   METHOD on_end_of_task.
 
-    DATA: lt_files TYPE cft_rawline.
+    DATA: lv_result    TYPE xstring,
+          lv_path      TYPE string,
+          ls_fils_item TYPE zcl_abapgit_objects=>ty_serialization.
+
 
     RECEIVE RESULTS FROM FUNCTION 'Z_ABAPGIT_SERIALIZE_PARALLEL'
-      TABLES
-        files                 = lt_files
+      IMPORTING
+        ev_result = lv_result
+        ev_path   = lv_path
       EXCEPTIONS
-        communication_failure = 1
-        system_failure        = 2.
+        error     = 1
+        OTHERS    = 2.
+* todo, error handling
 
-* todo
-*     APPEND LINES OF lt_files TO gt_files.
+    IMPORT data = ls_fils_item FROM DATA BUFFER lv_result.
+
+    add_to_return( is_fils_item = ls_fils_item
+                   iv_path      = lv_path ).
 
     mv_free = mv_free + 1.
 
@@ -123,10 +150,11 @@ CLASS ZCL_ABAPGIT_SERIALIZE IMPLEMENTATION.
       STARTING NEW TASK lv_task
       CALLING on_end_of_task ON END OF TASK
       EXPORTING
-        obj_type              = is_tadir-object
-        obj_name              = is_tadir-obj_name
-        devclass              = is_tadir-devclass
-        language              = iv_language
+        iv_obj_type           = is_tadir-object
+        iv_obj_name           = is_tadir-obj_name
+        iv_devclass           = is_tadir-devclass
+        iv_language           = iv_language
+        iv_path               = is_tadir-path
       EXCEPTIONS
         system_failure        = 1
         communication_failure = 2
@@ -146,9 +174,6 @@ CLASS ZCL_ABAPGIT_SERIALIZE IMPLEMENTATION.
 
     DATA: ls_fils_item TYPE zcl_abapgit_objects=>ty_serialization.
 
-    FIELD-SYMBOLS: <ls_file>   LIKE LINE OF ls_fils_item-files,
-                   <ls_return> LIKE LINE OF mt_files.
-
 
     ls_fils_item-item-obj_type = is_tadir-object.
     ls_fils_item-item-obj_name = is_tadir-obj_name.
@@ -159,13 +184,8 @@ CLASS ZCL_ABAPGIT_SERIALIZE IMPLEMENTATION.
       iv_language = iv_language
       io_log      = io_log ).
 
-    LOOP AT ls_fils_item-files ASSIGNING <ls_file>.
-      <ls_file>-path = is_tadir-path.
-
-      APPEND INITIAL LINE TO mt_files ASSIGNING <ls_return>.
-      <ls_return>-file = <ls_file>.
-      <ls_return>-item = ls_fils_item-item.
-    ENDLOOP.
+    add_to_return( is_fils_item = ls_fils_item
+                   iv_path      = is_tadir-path ).
 
   ENDMETHOD.
 
@@ -175,9 +195,7 @@ CLASS ZCL_ABAPGIT_SERIALIZE IMPLEMENTATION.
     DATA: lv_max       TYPE i,
           ls_fils_item TYPE zcl_abapgit_objects=>ty_serialization.
 
-    FIELD-SYMBOLS: <ls_file>   LIKE LINE OF ls_fils_item-files,
-                   <ls_return> LIKE LINE OF rt_files,
-                   <ls_tadir>  LIKE LINE OF it_tadir.
+    FIELD-SYMBOLS: <ls_tadir>  LIKE LINE OF it_tadir.
 
 
 * todo, handle "unsupported object type" in log, https://github.com/larshp/abapGit/issues/2121

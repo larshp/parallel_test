@@ -1,7 +1,7 @@
 CLASS ltcl_determine_max_threads DEFINITION DEFERRED.
 CLASS zcl_abapgit_serialize DEFINITION LOCAL FRIENDS ltcl_determine_max_threads.
 
-CLASS ltcl_determine_max_threads DEFINITION FOR TESTING DURATION SHORT RISK LEVEL HARMLESS.
+CLASS ltcl_determine_max_threads DEFINITION FOR TESTING DURATION SHORT RISK LEVEL HARMLESS FINAL.
 
   PRIVATE SECTION.
     DATA:
@@ -47,7 +47,7 @@ CLASS ltcl_determine_max_threads IMPLEMENTATION.
 
 ENDCLASS.
 
-CLASS ltcl_serialize DEFINITION FOR TESTING DURATION SHORT RISK LEVEL HARMLESS.
+CLASS ltcl_serialize DEFINITION FOR TESTING DURATION SHORT RISK LEVEL HARMLESS FINAL.
 
   PRIVATE SECTION.
     DATA:
@@ -78,6 +78,7 @@ CLASS ltcl_serialize IMPLEMENTATION.
     APPEND INITIAL LINE TO lt_tadir ASSIGNING <ls_tadir>.
     <ls_tadir>-object   = 'PROG'.
     <ls_tadir>-obj_name = 'RSABAPPROGRAM'.
+    <ls_tadir>-devclass = 'PACKAGE'.
     <ls_tadir>-path     = 'foobar'.
 
     lt_sequential = mo_cut->serialize(

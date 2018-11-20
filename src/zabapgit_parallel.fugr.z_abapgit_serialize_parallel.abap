@@ -2,43 +2,31 @@ FUNCTION z_abapgit_serialize_parallel.
 *"----------------------------------------------------------------------
 *"*"Local Interface:
 *"  IMPORTING
-*"     VALUE(OBJ_TYPE) TYPE  TADIR-OBJECT
-*"     VALUE(OBJ_NAME) TYPE  TADIR-OBJ_NAME
-*"     VALUE(DEVCLASS) TYPE  TADIR-DEVCLASS
-*"  TABLES
-*"      FILES TYPE  CFT_RAWLINE
+*"     VALUE(IV_OBJ_TYPE) TYPE  TADIR-OBJECT
+*"     VALUE(IV_OBJ_NAME) TYPE  TADIR-OBJ_NAME
+*"     VALUE(IV_DEVCLASS) TYPE  TADIR-DEVCLASS
+*"     VALUE(IV_LANGUAGE) TYPE  SY-LANGU
+*"     VALUE(IV_PATH) TYPE  STRING
+*"  EXPORTING
+*"     VALUE(EV_RESULT) TYPE  XSTRING
+*"     VALUE(EV_PATH) TYPE  STRING
 *"  EXCEPTIONS
 *"      ERROR
 *"----------------------------------------------------------------------
 
   TRY.
+* todo, downport
       DATA(ls_item) = VALUE zif_abapgit_definitions=>ty_item(
-        obj_type = obj_type
-        obj_name = obj_name
-        devclass = devclass ).
+        obj_type = iv_obj_type
+        obj_name = iv_obj_name
+        devclass = iv_devclass ).
 
       DATA(lt_files) = zcl_abapgit_objects=>serialize(
         is_item     = ls_item
-        iv_language = sy-langu ).
+        iv_language = iv_language ).
 
-* this is not correct, but will likely give similar performance
-* to the right implementation
-      LOOP AT lt_files-files INTO DATA(ls_file).
-        DATA(lv_len) = xstrlen( ls_file-data ).
-        DATA(lv_off) = 0.
-        DO.
-          IF lv_len >= 128.
-            lv_len = lv_len - 128.
-            APPEND VALUE rspolpbi( data = ls_file-data+lv_off(128) ) TO files.
-          ELSE.
-            APPEND VALUE rspolpbi( data = ls_file-data+lv_off(lv_len) ) TO files.
-            lv_len = 0.
-          ENDIF.
-          IF lv_len = 0.
-            EXIT.
-          ENDIF.
-        ENDDO.
-      ENDLOOP.
+      EXPORT data = lt_files TO DATA BUFFER ev_result.
+      ev_path = iv_path.
 
     CATCH zcx_abapgit_exception.
 * todo, better error handling
