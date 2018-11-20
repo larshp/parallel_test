@@ -31,6 +31,7 @@ CLASS zcl_abapgit_serialize DEFINITION
         !iv_group    TYPE rzlli_apcl
         !is_tadir    TYPE zif_abapgit_definitions=>ty_tadir
         !iv_language TYPE langu
+        !iv_task     TYPE sychar32
       RAISING
         zcx_abapgit_exception .
     METHODS run_sequential
@@ -144,16 +145,14 @@ CLASS ZCL_ABAPGIT_SERIALIZE IMPLEMENTATION.
 
   METHOD run_parallel.
 
-    DATA: lv_task TYPE c LENGTH 44.
+    DATA: lv_msg TYPE c LENGTH 100.
 
 
     ASSERT mv_free > 0.
 
-    CONCATENATE is_tadir-object is_tadir-obj_name INTO lv_task.
-
 * todo, how to handle setting "<ls_file>-path = <ls_tadir>-path." ?
     CALL FUNCTION 'Z_ABAPGIT_SERIALIZE_PARALLEL'
-      STARTING NEW TASK lv_task
+      STARTING NEW TASK iv_task
       DESTINATION IN GROUP iv_group
       CALLING on_end_of_task ON END OF TASK
       EXPORTING
@@ -163,14 +162,14 @@ CLASS ZCL_ABAPGIT_SERIALIZE IMPLEMENTATION.
         iv_language           = iv_language
         iv_path               = is_tadir-path
       EXCEPTIONS
-        system_failure        = 1
-        communication_failure = 2
+        system_failure        = 1 MESSAGE lv_msg
+        communication_failure = 2 MESSAGE lv_msg
         resource_failure      = 3.
     IF sy-subrc = 3.
       WRITE: / 'resource failure, wait'.
       WAIT UP TO 1 SECONDS.
     ELSEIF sy-subrc <> 0.
-      WRITE: / 'error, calling', sy-subrc.
+      WRITE: / 'error, calling', sy-subrc, lv_msg.
       RETURN.
     ENDIF.
 
@@ -226,6 +225,7 @@ CLASS ZCL_ABAPGIT_SERIALIZE IMPLEMENTATION.
         run_parallel(
           iv_group    = 'parallel_generators'    " todo
           is_tadir    = <ls_tadir>
+          iv_task     = |{ sy-tabix }|
           iv_language = iv_language ).
         WAIT UNTIL mv_free > 0 UP TO 10 SECONDS.
       ENDIF.
