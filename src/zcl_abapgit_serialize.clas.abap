@@ -28,6 +28,7 @@ CLASS zcl_abapgit_serialize DEFINITION
         !is_fils_item TYPE zcl_abapgit_objects=>ty_serialization .
     METHODS run_parallel
       IMPORTING
+        !iv_group    TYPE rzlli_apcl
         !is_tadir    TYPE zif_abapgit_definitions=>ty_tadir
         !iv_language TYPE langu
       RAISING
@@ -153,6 +154,7 @@ CLASS ZCL_ABAPGIT_SERIALIZE IMPLEMENTATION.
 * todo, how to handle setting "<ls_file>-path = <ls_tadir>-path." ?
     CALL FUNCTION 'Z_ABAPGIT_SERIALIZE_PARALLEL'
       STARTING NEW TASK lv_task
+      DESTINATION IN GROUP iv_group
       CALLING on_end_of_task ON END OF TASK
       EXPORTING
         iv_obj_type           = is_tadir-object
@@ -164,8 +166,11 @@ CLASS ZCL_ABAPGIT_SERIALIZE IMPLEMENTATION.
         system_failure        = 1
         communication_failure = 2
         resource_failure      = 3.
-    IF sy-subrc <> 0.
-      WRITE: / 'error, calling'.
+    IF sy-subrc = 3.
+      WRITE: / 'resource failure, wait'.
+      WAIT UP TO 1 SECONDS.
+    ELSEIF sy-subrc <> 0.
+      WRITE: / 'error, calling', sy-subrc.
       RETURN.
     ENDIF.
 
@@ -219,15 +224,14 @@ CLASS ZCL_ABAPGIT_SERIALIZE IMPLEMENTATION.
           io_log      = io_log ).
       ELSE.
         run_parallel(
+          iv_group    = 'parallel_generators'    " todo
           is_tadir    = <ls_tadir>
           iv_language = iv_language ).
         WAIT UNTIL mv_free > 0 UP TO 10 SECONDS.
       ENDIF.
-*      WRITE: / 'free', mv_free.
     ENDLOOP.
 
     WAIT UNTIL mv_free = lv_max UP TO 10 SECONDS.
-    WRITE: / 'free', mv_free.
     rt_files = mt_files.
 
   ENDMETHOD.

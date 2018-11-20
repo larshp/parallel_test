@@ -2,8 +2,6 @@ REPORT zparallel_test.
 
 PARAMETERS: iter TYPE i DEFAULT 1 OBLIGATORY.
 
-* quick and dirty
-
 START-OF-SELECTION.
   PERFORM run.
 
