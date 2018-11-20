@@ -1,7 +1,6 @@
 REPORT zparallel_test.
 
-PARAMETERS: max  TYPE i DEFAULT 4 OBLIGATORY,
-            iter TYPE i DEFAULT 2 OBLIGATORY.
+PARAMETERS: iter TYPE i DEFAULT 1 OBLIGATORY.
 
 * quick and dirty
 
@@ -17,18 +16,6 @@ CLASS lcl_test DEFINITION.
 
     CLASS-METHODS:
       run
-        RAISING
-          zcx_abapgit_exception,
-      on_task_complete
-        IMPORTING p_task TYPE clike,
-      parallel
-        IMPORTING
-          it_tadir TYPE zif_abapgit_definitions=>ty_tadir_tt
-        RAISING
-          zcx_abapgit_exception,
-      sequential
-        IMPORTING
-          it_tadir TYPE zif_abapgit_definitions=>ty_tadir_tt
         RAISING
           zcx_abapgit_exception,
       find_tadir
@@ -49,89 +36,25 @@ CLASS lcl_test IMPLEMENTATION.
     DO iter TIMES.
       GET RUN TIME FIELD DATA(t1).
       CLEAR gt_files.
-      parallel( lt_tadir ).
+      DATA(par) = NEW zcl_abapgit_serialize( )->serialize(
+        it_tadir = lt_tadir
+        iv_force_sequential = abap_false ).
       GET RUN TIME FIELD DATA(t2).
       t1 = ( t2 - t1 ) / 1000000.
       WRITE: / 'Parallel:', t1, 'seconds'.
+      WRITE: / lines( par ).
 
       GET RUN TIME FIELD t1.
-      sequential( lt_tadir ).
+      DATA(seq) = NEW zcl_abapgit_serialize( )->serialize(
+        it_tadir = lt_tadir
+        iv_force_sequential = abap_true ).
       GET RUN TIME FIELD t2.
       t1 = ( t2 - t1 ) / 1000000.
       WRITE: / 'Sequential:', t1, 'seconds'.
+      WRITE: / lines( seq ).
 
       WRITE: /.
     ENDDO.
-
-  ENDMETHOD.
-
-  METHOD on_task_complete.
-
-    DATA: lt_files TYPE cft_rawline.
-
-    RECEIVE RESULTS FROM FUNCTION 'Z_ABAPGIT_SERIALIZE_PARALLEL'
-      TABLES
-        files                 = lt_files
-      EXCEPTIONS
-        communication_failure = 1
-        system_failure        = 2.
-
-    APPEND LINES OF lt_files TO gt_files.
-
-    free = free + 1.
-
-  ENDMETHOD.
-
-  METHOD parallel.
-
-    DATA: lt_files TYPE cft_rawline,
-          lv_task  TYPE c LENGTH 5.
-
-    free = max.
-
-    LOOP AT it_tadir ASSIGNING FIELD-SYMBOL(<ls_tadir>).
-      lv_task = sy-tabix.
-
-      CALL FUNCTION 'Z_ABAPGIT_SERIALIZE_PARALLEL'
-        STARTING NEW TASK lv_task
-        CALLING on_task_complete ON END OF TASK
-        EXPORTING
-          obj_type = <ls_tadir>-object
-          obj_name = <ls_tadir>-obj_name
-          devclass = <ls_tadir>-devclass
-        EXCEPTIONS
-          error    = 1
-          OTHERS   = 2.
-      IF sy-subrc <> 0.
-        BREAK-POINT.
-      ENDIF.
-
-      free = free - 1.
-
-      WAIT UNTIL free > 0.
-
-    ENDLOOP.
-
-    WAIT UNTIL free = max.
-
-    WRITE: / 'file rows:', lines( gt_files ).
-
-  ENDMETHOD.
-
-  METHOD sequential.
-
-    LOOP AT it_tadir ASSIGNING FIELD-SYMBOL(<ls_tadir>).
-
-      DATA(ls_item) = VALUE zif_abapgit_definitions=>ty_item(
-        obj_type = <ls_tadir>-object
-        obj_name = <ls_tadir>-obj_name
-        devclass = <ls_tadir>-devclass ).
-
-      DATA(lt_files) = zcl_abapgit_objects=>serialize(
-        is_item     = ls_item
-        iv_language = sy-langu ).
-
-    ENDLOOP.
 
   ENDMETHOD.
 

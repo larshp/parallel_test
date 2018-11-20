@@ -126,7 +126,10 @@ CLASS ZCL_ABAPGIT_SERIALIZE IMPLEMENTATION.
       EXCEPTIONS
         error     = 1
         OTHERS    = 2.
+    IF sy-subrc <> 0.
+      WRITE: / 'error, receive'.
 * todo, error handling
+    ENDIF.
 
     IMPORT data = ls_fils_item FROM DATA BUFFER lv_result.
 
@@ -142,6 +145,8 @@ CLASS ZCL_ABAPGIT_SERIALIZE IMPLEMENTATION.
 
     DATA: lv_task TYPE c LENGTH 44.
 
+
+    ASSERT mv_free > 0.
 
     CONCATENATE is_tadir-object is_tadir-obj_name INTO lv_task.
 
@@ -160,12 +165,11 @@ CLASS ZCL_ABAPGIT_SERIALIZE IMPLEMENTATION.
         communication_failure = 2
         resource_failure      = 3.
     IF sy-subrc <> 0.
-      BREAK-POINT.
+      WRITE: / 'error, calling'.
+      RETURN.
     ENDIF.
 
     mv_free = mv_free - 1.
-
-    WAIT UNTIL mv_free > 0.
 
   ENDMETHOD.
 
@@ -199,11 +203,12 @@ CLASS ZCL_ABAPGIT_SERIALIZE IMPLEMENTATION.
 
 
 * todo, handle "unsupported object type" in log, https://github.com/larshp/abapGit/issues/2121
+* todo, progress indicator?
 
     CLEAR mt_files.
 
     lv_max = determine_max_threads( iv_force_sequential ).
-
+    WRITE: / 'max', lv_max.
     mv_free = lv_max.
 
     LOOP AT it_tadir ASSIGNING <ls_tadir>.
@@ -216,11 +221,13 @@ CLASS ZCL_ABAPGIT_SERIALIZE IMPLEMENTATION.
         run_parallel(
           is_tadir    = <ls_tadir>
           iv_language = iv_language ).
+        WAIT UNTIL mv_free > 0 UP TO 10 SECONDS.
       ENDIF.
+*      WRITE: / 'free', mv_free.
     ENDLOOP.
 
-    WAIT UNTIL mv_free = lv_max.
-
+    WAIT UNTIL mv_free = lv_max UP TO 10 SECONDS.
+    WRITE: / 'free', mv_free.
     rt_files = mt_files.
 
   ENDMETHOD.
