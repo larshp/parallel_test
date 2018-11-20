@@ -1,4 +1,4 @@
-FUNCTION zparallel.
+FUNCTION z_abapgit_serialize_parallel.
 *"----------------------------------------------------------------------
 *"*"Local Interface:
 *"  IMPORTING
@@ -42,7 +42,6 @@ FUNCTION zparallel.
 
     CATCH zcx_abapgit_exception.
 * todo, better error handling
-break developer.
       RAISE error.
   ENDTRY.
 

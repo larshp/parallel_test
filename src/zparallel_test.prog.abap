@@ -69,7 +69,7 @@ CLASS lcl_test IMPLEMENTATION.
 
     DATA: lt_files TYPE cft_rawline.
 
-    RECEIVE RESULTS FROM FUNCTION 'ZPARALLEL'
+    RECEIVE RESULTS FROM FUNCTION 'Z_ABAPGIT_SERIALIZE_PARALLEL'
       TABLES
         files                 = lt_files
       EXCEPTIONS
@@ -92,7 +92,7 @@ CLASS lcl_test IMPLEMENTATION.
     LOOP AT it_tadir ASSIGNING FIELD-SYMBOL(<ls_tadir>).
       lv_task = sy-tabix.
 
-      CALL FUNCTION 'ZPARALLEL'
+      CALL FUNCTION 'Z_ABAPGIT_SERIALIZE_PARALLEL'
         STARTING NEW TASK lv_task
         CALLING on_task_complete ON END OF TASK
         EXPORTING

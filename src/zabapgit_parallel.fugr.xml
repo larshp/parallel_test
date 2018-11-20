@@ -2,16 +2,16 @@
 <abapGit version="v1.0.0" serializer="LCL_OBJECT_FUGR" serializer_version="v1.0.0">
  <asx:abap xmlns:asx="http://www.sap.com/abapxml" version="1.0">
   <asx:values>
-   <AREAT>Parallel</AREAT>
+   <AREAT>abapGit - Parallel Processing</AREAT>
    <INCLUDES>
-    <SOBJ_NAME>LZPARALLELTOP</SOBJ_NAME>
-    <SOBJ_NAME>SAPLZPARALLEL</SOBJ_NAME>
+    <SOBJ_NAME>LZABAPGIT_PARALLELTOP</SOBJ_NAME>
+    <SOBJ_NAME>SAPLZABAPGIT_PARALLEL</SOBJ_NAME>
    </INCLUDES>
    <FUNCTIONS>
     <item>
-     <FUNCNAME>ZPARALLEL</FUNCNAME>
+     <FUNCNAME>Z_ABAPGIT_SERIALIZE_PARALLEL</FUNCNAME>
      <REMOTE_CALL>R</REMOTE_CALL>
-     <SHORT_TEXT>test</SHORT_TEXT>
+     <SHORT_TEXT>Serialize object</SHORT_TEXT>
      <IMPORT>
       <RSIMP>
        <PARAMETER>OBJ_TYPE</PARAMETER>
