@@ -23,7 +23,7 @@ FUNCTION zparallel.
 
 * this is not correct, but will likely give similar performance
 * to the right implementation
-      LOOP AT lt_files INTO DATA(ls_file).
+      LOOP AT lt_files-files INTO DATA(ls_file).
         DATA(lv_len) = xstrlen( ls_file-data ).
         DATA(lv_off) = 0.
         DO.
@@ -41,6 +41,8 @@ FUNCTION zparallel.
       ENDLOOP.
 
     CATCH zcx_abapgit_exception.
+* todo, better error handling
+break developer.
       RAISE error.
   ENDTRY.
 
