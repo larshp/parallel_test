@@ -19,8 +19,10 @@ CLASS zcl_abapgit_serialize DEFINITION
         zcx_abapgit_exception .
   PROTECTED SECTION.
 
+    CLASS-DATA gv_max TYPE i .
     DATA mt_files TYPE zif_abapgit_definitions=>ty_files_item_tt .
     DATA mv_free TYPE i .
+    DATA mo_log TYPE REF TO zcl_abapgit_log .
 
     METHODS add_to_return
       IMPORTING
@@ -38,7 +40,6 @@ CLASS zcl_abapgit_serialize DEFINITION
       IMPORTING
         !is_tadir    TYPE zif_abapgit_definitions=>ty_tadir
         !iv_language TYPE langu
-        !io_log      TYPE REF TO zcl_abapgit_log
       RAISING
         zcx_abapgit_exception .
     METHODS determine_max_threads
@@ -79,6 +80,11 @@ CLASS ZCL_ABAPGIT_SERIALIZE IMPLEMENTATION.
       RETURN.
     ENDIF.
 
+    IF gv_max >= 1.
+      rv_threads = gv_max.
+      RETURN.
+    ENDIF.
+
     CALL FUNCTION 'FUNCTION_EXISTS'
       EXPORTING
         funcname           = 'Z_ABAPGIT_SERIALIZE_PARALLEL'
@@ -86,17 +92,19 @@ CLASS ZCL_ABAPGIT_SERIALIZE IMPLEMENTATION.
         function_not_exist = 1
         OTHERS             = 2.
     IF sy-subrc <> 0.
-      rv_threads = 1.
+      gv_max = 1.
       RETURN.
     ENDIF.
 
 * todo, add possibility to set group name in user exit
 
+* SPBT_INITIALIZE gives error PBT_ENV_ALREADY_INITIALIZED if called
+* multiple times in same session
     CALL FUNCTION 'SPBT_INITIALIZE'
       EXPORTING
         group_name                     = 'parallel_generators'
       IMPORTING
-        free_pbt_wps                   = rv_threads
+        free_pbt_wps                   = gv_max
       EXCEPTIONS
         invalid_group_name             = 1
         internal_error                 = 2
@@ -109,11 +117,13 @@ CLASS ZCL_ABAPGIT_SERIALIZE IMPLEMENTATION.
       zcx_abapgit_exception=>raise( |Error from SPBT_INITIALIZE: { sy-subrc }| ).
     ENDIF.
 
-    IF rv_threads > 1.
-      rv_threads = rv_threads - 1.
+    IF gv_max > 1.
+      gv_max = gv_max - 1.
     ENDIF.
 
-    ASSERT rv_threads >= 1.
+    ASSERT gv_max >= 1.
+
+    rv_threads = gv_max.
 
   ENDMETHOD.
 
@@ -133,15 +143,13 @@ CLASS ZCL_ABAPGIT_SERIALIZE IMPLEMENTATION.
         error     = 1
         OTHERS    = 2.
     IF sy-subrc <> 0.
-      WRITE: / 'error, receive'.
-* todo, error handling
+      mo_log->add_error( |{ sy-msgv1 }{ sy-msgv2 }{ sy-msgv3 }{ sy-msgv3 }| ).
+    ELSE.
+      IMPORT data = ls_fils_item FROM DATA BUFFER lv_result. "#EC CI_SUBRC
+      ASSERT sy-subrc = 0.
+      add_to_return( is_fils_item = ls_fils_item
+                     iv_path      = lv_path ).
     ENDIF.
-
-    IMPORT data = ls_fils_item FROM DATA BUFFER lv_result. "#EC CI_SUBRC
-    ASSERT sy-subrc = 0.
-
-    add_to_return( is_fils_item = ls_fils_item
-                   iv_path      = lv_path ).
 
     mv_free = mv_free + 1.
 
@@ -173,13 +181,11 @@ CLASS ZCL_ABAPGIT_SERIALIZE IMPLEMENTATION.
           resource_failure      = 3
           OTHERS                = 4.
       IF sy-subrc = 3.
-*        WRITE: / 'resource failure, wait', iv_task, lv_msg.
         lv_free = mv_free.
         WAIT UNTIL mv_free <> lv_free UP TO 1 SECONDS.
         CONTINUE.
       ELSEIF sy-subrc <> 0.
-        WRITE: / 'error, calling', sy-subrc, lv_msg.
-* todo, error handling
+        ASSERT lv_msg = '' AND 0 = 1.
       ENDIF.
       EXIT.
     ENDDO.
@@ -191,20 +197,24 @@ CLASS ZCL_ABAPGIT_SERIALIZE IMPLEMENTATION.
 
   METHOD run_sequential.
 
-    DATA: ls_fils_item TYPE zcl_abapgit_objects=>ty_serialization.
+    DATA: lx_error     TYPE REF TO zcx_abapgit_exception,
+          ls_fils_item TYPE zcl_abapgit_objects=>ty_serialization.
 
 
     ls_fils_item-item-obj_type = is_tadir-object.
     ls_fils_item-item-obj_name = is_tadir-obj_name.
     ls_fils_item-item-devclass = is_tadir-devclass.
 
-    ls_fils_item = zcl_abapgit_objects=>serialize(
-      is_item     = ls_fils_item-item
-      iv_language = iv_language
-      io_log      = io_log ).
+    TRY.
+        ls_fils_item = zcl_abapgit_objects=>serialize(
+          is_item     = ls_fils_item-item
+          iv_language = iv_language ).
 
-    add_to_return( is_fils_item = ls_fils_item
-                   iv_path      = is_tadir-path ).
+        add_to_return( is_fils_item = ls_fils_item
+                       iv_path      = is_tadir-path ).
+      CATCH zcx_abapgit_exception INTO lx_error.
+        mo_log->add_error( lx_error->get_text( ) ).
+    ENDTRY.
 
   ENDMETHOD.
 
@@ -216,20 +226,19 @@ CLASS ZCL_ABAPGIT_SERIALIZE IMPLEMENTATION.
     FIELD-SYMBOLS: <ls_tadir> LIKE LINE OF it_tadir.
 
 
-* todo, handle "unsupported object type" in log, https://github.com/larshp/abapGit/issues/2121
 * todo, progress indicator?
 
     CLEAR mt_files.
 
     lv_max = determine_max_threads( iv_force_sequential ).
     mv_free = lv_max.
+    mo_log = io_log.
 
     LOOP AT it_tadir ASSIGNING <ls_tadir>.
       IF lv_max = 1.
         run_sequential(
           is_tadir    = <ls_tadir>
-          iv_language = iv_language
-          io_log      = io_log ).
+          iv_language = iv_language ).
       ELSE.
         run_parallel(
           iv_group    = 'parallel_generators'    " todo
