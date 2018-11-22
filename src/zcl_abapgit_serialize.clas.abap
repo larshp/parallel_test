@@ -81,6 +81,8 @@ CLASS ZCL_ABAPGIT_SERIALIZE IMPLEMENTATION.
     ENDIF.
 
     IF gv_max >= 1.
+* SPBT_INITIALIZE gives error PBT_ENV_ALREADY_INITIALIZED if called
+* multiple times in same session
       rv_threads = gv_max.
       RETURN.
     ENDIF.
@@ -98,8 +100,6 @@ CLASS ZCL_ABAPGIT_SERIALIZE IMPLEMENTATION.
 
 * todo, add possibility to set group name in user exit
 
-* SPBT_INITIALIZE gives error PBT_ENV_ALREADY_INITIALIZED if called
-* multiple times in same session
     CALL FUNCTION 'SPBT_INITIALIZE'
       EXPORTING
         group_name                     = 'parallel_generators'
@@ -221,12 +221,11 @@ CLASS ZCL_ABAPGIT_SERIALIZE IMPLEMENTATION.
 
   METHOD serialize.
 
-    DATA: lv_max TYPE i.
+    DATA: lv_max      TYPE i,
+          lo_progress TYPE REF TO zcl_abapgit_progress.
 
     FIELD-SYMBOLS: <ls_tadir> LIKE LINE OF it_tadir.
 
-
-* todo, progress indicator?
 
     CLEAR mt_files.
 
@@ -234,7 +233,16 @@ CLASS ZCL_ABAPGIT_SERIALIZE IMPLEMENTATION.
     mv_free = lv_max.
     mo_log = io_log.
 
+    CREATE OBJECT lo_progress
+      EXPORTING
+        iv_total = lines( it_tadir ).
+
     LOOP AT it_tadir ASSIGNING <ls_tadir>.
+
+      lo_progress->show(
+        iv_current = sy-tabix
+        iv_text    = |Serialize { <ls_tadir>-obj_name }, { lv_max } threads| ) ##NO_TEXT.
+
       IF lv_max = 1.
         run_sequential(
           is_tadir    = <ls_tadir>
